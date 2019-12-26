@@ -22,9 +22,8 @@ const scopes = [
     `https://www.googleapis.com/auth/calendar.readonly`
 ];
 
-
-exports.sourceNodes = async ({ actions }) => {
-    const key = require(`../../pem/ccp_calendar_key.json`);
+exports.sourceNodes = async ({ actions }, options) => {
+    const key = require(options.pemFilePath);
     const { createNode } = actions
     // setting the auth
     const token = new google.auth.JWT(
@@ -32,7 +31,7 @@ exports.sourceNodes = async ({ actions }) => {
         null,
         key.private_key,
         scopes,
-        'info@ckendallart.com'
+        options.calendarId
     );
     google.options({ auth: token });
 
@@ -41,7 +40,7 @@ exports.sourceNodes = async ({ actions }) => {
 
     // getting the list of items for calendar
     const { data: { items }} = await calendar.events.list({
-        calendarId: 'info@ckendallart.com',
+        calendarId: options.calendarId,
         showDeleted: false,
         orderBy: 'starttime', // ascending
         singleEvents: true, // recurring events are duplicated
