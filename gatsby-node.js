@@ -1,10 +1,24 @@
 const { google } = require('googleapis');
 const moment = require('moment');
+const fs = require('fs');
 
-const defaultFieldsToInclude = ['start', 'end', 'summary', 'status', 'organizer'];
 const requiredFields = ['id', 'internal'];
+const defaultOptions = {
+    includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location'],
+    calendarId: '',
+    envVar: '',
+    pemFilePath: '',
+    // only events after today
+    timeMin: moment().format(),
+    // only events two years from now
+    timeMax: moment().add(2, 'y').format(),
+    scopes: [
+        `https://www.googleapis.com/auth/calendar.events.readonly`,
+        `https://www.googleapis.com/auth/calendar.readonly`
+    ]
+};
 
-const processEvents = (event, fieldsToInclude = defaultFieldsToInclude) => {
+const processEvents = (event, fieldsToInclude) => {
     return Object.keys(event)
         .reduce((acc, key) => {
             if (fieldsToInclude.concat(requiredFields).includes(key)) {
@@ -15,23 +29,32 @@ const processEvents = (event, fieldsToInclude = defaultFieldsToInclude) => {
             }
             return acc;
         }, {});
+};
+
+const getAuth = (options) => {
+    if (options.envVar) return JSON.parse(options.envVar);
+    if (fs.existsSync(options.pemFilePath)) {
+        return require(options.pemFilePath);
+    }
 }
 
-const scopes = [
-    `https://www.googleapis.com/auth/calendar.events.readonly`,
-    `https://www.googleapis.com/auth/calendar.readonly`
-];
-
-exports.sourceNodes = async ({ actions }, options) => {
-    const key = require(options.pemFilePath);
+exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
+    const key = getAuth(options);
     const { createNode } = actions
-    // setting the auth
+    const {
+        calendarId,
+        includedFields,
+        timeMax,
+        timeMin,
+        scopes } = { ...defaultOptions, ...options };
+    
+    // setting the general auth property for client
     const token = new google.auth.JWT(
         key.client_email,
         null,
         key.private_key,
         scopes,
-        options.calendarId
+        calendarId
     );
     google.options({ auth: token });
 
@@ -40,18 +63,28 @@ exports.sourceNodes = async ({ actions }, options) => {
 
     // getting the list of items for calendar
     const { data: { items }} = await calendar.events.list({
-        calendarId: options.calendarId,
+        calendarId: calendarId,
         showDeleted: false,
-        orderBy: 'starttime', // ascending
-        singleEvents: true, // recurring events are duplicated
-        timeMin: moment().format(), // only events after today
-        timeMax: moment().add(2, 'y').format() // only events two years from now
+        // ascending
+        orderBy: 'starttime',
+        // recurring events are duplicated
+        singleEvents: true,
+        timeMin: timeMin,
+        timeMax: timeMax
      });
+
+     items.forEach(item => console.log("start date", item.start.date));
   
     // Process data into nodes.
     items
-        .map(item => ({ ...item, internal: { contentDigest: item.updated, type: 'GoogleCalendarEvent' }}))
-        .forEach(event => createNode(processEvents(event)))
+        .map(item => ({
+            ...item,
+            internal: {
+                contentDigest: item.updated,
+                type: 'GoogleCalendarEvent'
+            }
+        }))
+        .forEach(event => createNode(processEvents(event, includedFields)))
   
     // We're done, return.
     return
