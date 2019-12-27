@@ -17,7 +17,8 @@
     "gatsby events",
     "google",
     "googleapi",
-    "google-api"
+    "google-api",
+    "gatsby-plugin"
   ],
   "author": "Maxwell Kendall",
   "license": "ISC",
