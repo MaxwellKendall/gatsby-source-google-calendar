@@ -51,7 +51,7 @@ Configuration options are as follows:
 ### Configuration Example
 ```javascript
 {
-      resolve: `gatsby-source-google-calendar`,
+      resolve: `gatsby-source-google-calendar-events`,
       options: {
         envVar: GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY,
         calendarId: 'user@gsuite-domain.com'
