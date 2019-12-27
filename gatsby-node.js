@@ -3,7 +3,7 @@ const moment = require('moment');
 const fs = require('fs');
 
 const requiredFields = ['id', 'internal'];
-const defaultOptions = {
+export const defaultOptions = {
     includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location'],
     calendarId: '',
     envVar: '',
