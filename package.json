@@ -2,7 +2,7 @@
   "name": "gatsby-source-google-calendar",
   "version": "0.1.0",
   "description": "Provides data for an Upcoming Events page in a static website",
-  "main": "index.js",
+  "main": "gatsby-node.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,10 +11,11 @@
     "events",
     "calendar"
   ],
-  "author": "",
+  "author": "Maxwell Kendall",
   "license": "ISC",
   "dependencies": {
     "googleapis": "^46.0.0",
     "moment": "^2.24.0"
-  }
+  },
+  "homepage": "https://github.com/MaxwellKendall/gatsby-source-google-calendar"
 }
