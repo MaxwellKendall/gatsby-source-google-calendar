@@ -6,6 +6,7 @@ const requiredFields = ['id', 'internal'];
 const defaultOptions = {
     includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location'],
     calendarId: '',
+    assumedUser: '',
     envVar: '',
     pemFilePath: '',
     // only events after today
@@ -42,6 +43,7 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
     const key = getAuth(options);
     const { createNode } = actions
     const {
+        assumedUser,
         calendarId,
         includedFields,
         timeMax,
@@ -54,7 +56,7 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
         null,
         key.private_key,
         scopes,
-        calendarId
+        assumedUser
     );
     google.options({ auth: token });
 
@@ -72,8 +74,6 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
         timeMin: timeMin,
         timeMax: timeMax
      });
-
-     items.forEach(item => console.log("start date", item.start.date));
   
     // Process data into nodes.
     items

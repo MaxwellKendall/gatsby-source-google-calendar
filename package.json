@@ -1,6 +1,6 @@
 {
   "name": "gatsby-source-google-calendar-events",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Provides data for an Upcoming Events page in a static website",
   "main": "gatsby-node.js",
   "scripts": {
