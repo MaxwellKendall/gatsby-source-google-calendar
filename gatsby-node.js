@@ -4,7 +4,7 @@ const fs = require('fs');
 
 const requiredFields = ['id', 'internal'];
 const defaultOptions = {
-    includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location'],
+    includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location', 'slug'],
     calendarId: '',
     assumedUser: '',
     envVar: '',
