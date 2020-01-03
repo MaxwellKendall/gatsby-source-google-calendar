@@ -34,7 +34,7 @@ const getSlug = (event) => {
     
     const date = event.start.date
         ? event.start.date
-        : moment(event.start.dateTime).format();
+        : moment(event.start.dateTime).format('MM-DD-YYYY');
     
     return `${date}/${summary}`;
 };
