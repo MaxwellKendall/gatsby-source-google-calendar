@@ -18,6 +18,26 @@ const defaultOptions = {
         `https://www.googleapis.com/auth/calendar.readonly`
     ]
 };
+const forbiddenChars = [',', '!', '#', '?', '.'];
+
+const getSlug = (event) => {
+    const summary = event.summary
+        .split(" ")
+        .map((word) => {
+            return word
+                .toLowerCase()
+                .split('')
+                .filter((char) => !forbiddenChars.includes(char))
+                .join('')
+        })
+        .join("-");
+    
+    const date = event.start.date
+        ? event.start.date
+        : moment(event.start.dateTime).format();
+    
+    return `${date}/${summary}`;
+};
 
 const processEvents = (event, fieldsToInclude) => {
     return Object.keys(event)
@@ -77,10 +97,11 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
   
     // Process data into nodes.
     items
-        .map(item => ({
-            ...item,
+        .map(event => ({
+            ...event,
+            slug: getSlug(event),
             internal: {
-                contentDigest: item.updated,
+                contentDigest: event.updated,
                 type: 'GoogleCalendarEvent'
             }
         }))
