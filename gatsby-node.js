@@ -1,12 +1,15 @@
 const { google } = require('googleapis');
+const maps = require("@googlemaps/google-maps-services-js").Client;
 const moment = require('moment');
 const fs = require('fs');
 
 const requiredFields = ['id', 'internal'];
+const googleMapsClient = new maps({});
 const defaultOptions = {
     includedFields: ['start', 'end', 'summary', 'status', 'organizer', 'description', 'location', 'slug'],
     calendarId: '',
     assumedUser: '',
+    geoCodeApiKey: process.env.GOOGLE_MAPS_API_KEY,
     envVar: '',
     pemFilePath: '',
     // only events after today
@@ -19,6 +22,29 @@ const defaultOptions = {
     ]
 };
 const forbiddenChars = [',', '!', '#', '?', '.'];
+
+const getLongAndLat = (key, event) => {
+    return googleMapsClient
+        .geocode({
+            params: {
+                address: event.location,
+                key
+            }
+        })
+        .then((data) => {
+            const coordinates = data.data.results.find((result) => result.geometry.location);
+            if (coordinates) {
+                return coordinates.geometry.location;
+            }
+            else {
+                return null;
+            }
+        })
+        .catch((e) => {
+            console.log(`error fetching long and lat for ${event.location}: ${e}`);
+            return null;
+        });
+};
 
 const getSlug = (event) => {
     const summary = event.summary
@@ -39,7 +65,7 @@ const getSlug = (event) => {
     return `${date}/${summary}`;
 };
 
-const processEvents = (event, fieldsToInclude) => {
+const processEventObj = (event, fieldsToInclude) => {
     return Object.keys(event)
         .reduce((acc, key) => {
             if (fieldsToInclude.concat(requiredFields).includes(key)) {
@@ -68,7 +94,9 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
         includedFields,
         timeMax,
         timeMin,
-        scopes } = { ...defaultOptions, ...options };
+        geoCodeApiKey,
+        scopes
+    } = { ...defaultOptions, ...options };
     
     // setting the general auth property for client
     const token = new google.auth.JWT(
@@ -94,19 +122,120 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
         timeMin: timeMin,
         timeMax: timeMax
      });
+
+    const parseEventCoordinateString = (str) => str
+        .split(" ")
+        .map((word) => {
+            return word
+                .toLowerCase()
+                .split('')
+                .filter((char) => !forbiddenChars.includes(char))
+                .join('')
+        })
+        .join("-");
+
+    const getEventCoordinates = (events) => new Promise((resolve, reject) => {
+        const locationData = {};
+        events
+            .reduce((prevPromise, event, i, arr) => {
+                if (!event.location) return Promise.resolve();
+                const eventLocationString = parseEventCoordinateString(event.location);
+                return prevPromise
+                    .then((data) => {
+                        if (data === 'init') {
+                            return getLongAndLat(geoCodeApiKey, event)
+                                .then((data) => {
+                                    locationData[eventLocationString] = data;
+                                });
+                        }
+                        if (Object.keys(locationData).includes(eventLocationString)) {
+                            if (i === arr.length - 1) {
+                                return resolve(locationData);
+                            }
+                            return Promise.resolve();
+                        }
+                        else {
+                            return getLongAndLat(geoCodeApiKey, event)
+                                .then((data) => {
+                                    locationData[eventLocationString] = data;
+                                    if (i === arr.length - 1) resolve(locationData);
+                                });
+                        }
+                    })
+                    .catch((e) => {
+                        console.log(`some error: ${e}`);
+                        reject(e);
+                    });
+            }, Promise.resolve('init'));
+    });
   
     // Process data into nodes.
-    items
-        .map(event => ({
-            ...event,
-            slug: getSlug(event),
-            internal: {
-                contentDigest: event.updated,
-                type: 'GoogleCalendarEvent'
-            }
-        }))
-        .forEach(event => createNode(processEvents(event, includedFields)))
+    getEventCoordinates(items)
+        .then((locationData) => {
+            items
+                .map((event) => {
+                    const eventSlug = getSlug(event);
+                    const eventCoordinateKey = event.location
+                        ? parseEventCoordinateString(event.location)
+                        : '';
+                    const longAndLat = Object.keys(locationData).includes(eventCoordinateKey)
+                        ? locationData[eventCoordinateKey]
+                        : null
+                    return {
+                        ...event,
+                        slug: eventSlug,
+                        geoCoordinates: longAndLat,
+                        internal: {
+                            contentDigest: event.updated,
+                            type: 'GoogleCalendarEvent'
+                        }
+                    };
+                })
+                .forEach(event => {
+                    const eventObj = processEventObj(event, includedFields);
+                    console.log('eventObj', eventObj);
+                    createNode(eventObj);
+                })
+        })
   
     // We're done, return.
     return
+};
+
+exports.createSchemaCustomization = ({ actions }) => {
+    const { createTypes } = actions;
+
+    createTypes(`
+        type EventAttachment implements Node {
+            fileUrl: String
+            title: String
+        }
+        type EventTime implements Node {
+            date: Date,
+            dateTime: Date,
+            timeZone: String
+        }
+         type EventCoordinates implements Node {
+            lat: Float
+            long: Float
+        }
+        type GoogleCalendarEvent implements Node {
+            id: ID
+            name: String
+            slug: String
+            status: String
+            start: EventTime
+            end: EventTime
+            summary: String
+            status: String
+            organizer: String
+            description: String
+            location: String
+            attachments: [EventAttachment]
+            geoCoordinates: EventCoordinates
+            admin: Boolean
+            created: Date
+            photo: File
+        }
+  `)
 };
