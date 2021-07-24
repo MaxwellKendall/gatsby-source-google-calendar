@@ -32,6 +32,7 @@ const getLongAndLat = (key, event) => {
             }
         })
         .then((data) => {
+            console.log('data', data);
             const coordinates = data.data.results.find((result) => result.geometry.location);
             if (coordinates) {
                 return coordinates.geometry.location;
