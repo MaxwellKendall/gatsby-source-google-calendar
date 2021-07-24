@@ -32,7 +32,6 @@ const getLongAndLat = (key, event) => {
             }
         })
         .then((data) => {
-            console.log('data', data);
             const coordinates = data.data.results.find((result) => result.geometry.location);
             if (coordinates) {
                 return coordinates.geometry.location;
@@ -42,7 +41,7 @@ const getLongAndLat = (key, event) => {
             }
         })
         .catch((e) => {
-            console.log(`error fetching long and lat for ${event.location}: ${e}`);
+            console.error(`error fetching long and lat for ${event.location}: ${e}`);
             return null;
         });
 };
@@ -164,7 +163,7 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
                         }
                     })
                     .catch((e) => {
-                        console.log(`some error: ${e}`);
+                        console.error(`gatsby-source-google-calendar-events error during network request: ${e}`);
                         reject(e);
                     });
             }, Promise.resolve('init'));
@@ -194,7 +193,6 @@ exports.sourceNodes = async ({ actions }, options = defaultOptions) => {
                 })
                 .forEach(event => {
                     const eventObj = processEventObj(event, includedFields);
-                    console.log('eventObj', eventObj);
                     createNode(eventObj);
                 })
         })
