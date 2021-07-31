@@ -216,7 +216,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         }
          type EventCoordinates implements Node {
             lat: Float
-            long: Float
+            lng: Float
         }
         type GoogleCalendarEvent implements Node {
             id: ID
